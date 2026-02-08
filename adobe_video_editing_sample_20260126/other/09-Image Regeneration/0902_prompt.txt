@@ -1,0 +1,1 @@
+Perform image regeneration on the ship, with the content being naval warships
