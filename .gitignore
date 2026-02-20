@@ -1,0 +1,12 @@
+﻿__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+*.db
+.venv/
+venv/
+models/*/manifest.json
+runtime/
+.DS_Store
+.alma-snapshots

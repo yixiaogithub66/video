@@ -1,0 +1,2 @@
+﻿CREATE DATABASE temporal;
+CREATE DATABASE video;

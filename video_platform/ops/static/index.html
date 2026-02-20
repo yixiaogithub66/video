@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Video Platform Ops</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --text: #1b1f2a;
+        --muted: #5f6577;
+        --accent: #0f766e;
+        --danger: #b91c1c;
+        --tab-bg: #e2e8f0;
+        --tab-active: #1d4ed8;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(120deg, #f5f7fb 0%, #eef2ff 100%);
+        color: var(--text);
+        font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      }
+      .wrap {
+        max-width: 1260px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .header-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .title {
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .view-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .tab-btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--tab-bg);
+        color: #111827;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .tab-btn.active {
+        background: var(--tab-active);
+        color: #fff;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .card {
+        background: var(--card);
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
+        padding: 16px;
+      }
+      .job-row {
+        border-bottom: 1px solid #ebeff5;
+        padding: 10px 0;
+        cursor: pointer;
+      }
+      .job-row:last-child {
+        border-bottom: 0;
+      }
+      .status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #ecfeff;
+        color: #155e75;
+        font-size: 12px;
+      }
+      .btn {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+      .btn-ok {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-bad {
+        background: var(--danger);
+        color: #fff;
+      }
+      .btn-mid {
+        background: #1d4ed8;
+        color: #fff;
+      }
+      .btn-lang {
+        background: #0f172a;
+        color: #fff;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 12px;
+      }
+      .hidden {
+        display: none;
+      }
+      .workflow-frame {
+        width: 100%;
+        height: calc(100vh - 210px);
+        border: 0;
+        border-radius: 12px;
+        background: #ffffff;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .workflow-frame {
+          height: calc(100vh - 240px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/config.js"></script>
+    <div class="wrap">
+      <div class="header">
+        <div>
+          <div class="title" data-i18n="dashboardTitle">Ops Dashboard</div>
+          <div class="muted" data-i18n="dashboardSubtitle">Task board, QA reports, and manual review decisions</div>
+        </div>
+        <div class="header-actions">
+          <button id="langBtn" class="btn btn-lang">中文</button>
+          <button id="refreshBtn" class="btn btn-mid" data-i18n="refresh">Refresh</button>
+        </div>
+      </div>
+
+      <div class="view-tabs">
+        <button id="viewOpsBtn" class="tab-btn active" data-i18n="viewOps">Ops View</button>
+        <button id="viewWorkflowBtn" class="tab-btn" data-i18n="viewWorkflow">Workflow View</button>
+      </div>
+
+      <div id="opsPanel">
+        <div class="grid">
+          <div class="card">
+            <h3 data-i18n="jobs">Jobs</h3>
+            <div id="jobs"></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n="selectedJob">Selected Job</h3>
+            <div id="detail" class="muted" data-i18n="selectJobPrompt">Select a job to view details</div>
+            <div style="margin-top: 12px;">
+              <button class="btn btn-ok" onclick="decision('approve')" data-i18n="approve">Approve</button>
+              <button class="btn btn-bad" onclick="decision('reject')" data-i18n="reject">Reject</button>
+              <button class="btn btn-mid" onclick="decision('rerun')" data-i18n="rerun">Rerun</button>
+            </div>
+            <h4 data-i18n="latestQaReport">Latest QA Report</h4>
+            <pre id="qa" data-i18n="noQaLoaded">No report loaded</pre>
+          </div>
+        </div>
+      </div>
+
+      <div id="workflowPanel" class="hidden">
+        <div class="card">
+          <h3 data-i18n="workflowTitle">Workflow Console</h3>
+          <div class="muted" data-i18n="workflowHint">Embedded Temporal workflow page</div>
+          <iframe id="workflowFrame" class="workflow-frame" title="Workflow Console"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const cfg = window.__OPS_CONFIG__;
+      const headers = {
+        "Content-Type": "application/json",
+        "X-API-Token": cfg.apiToken,
+      };
+      const workflowUrl = `${window.location.protocol}//${window.location.hostname}:8088/`;
+
+      const I18N = {
+        en: {
+          pageTitle: "Video Platform Ops",
+          dashboardTitle: "Ops Dashboard",
+          dashboardSubtitle: "Task board, QA reports, and manual review decisions",
+          refresh: "Refresh",
+          viewOps: "Ops View",
+          viewWorkflow: "Workflow View",
+          workflowTitle: "Workflow Console",
+          workflowHint: "Embedded Temporal workflow page",
+          jobs: "Jobs",
+          selectedJob: "Selected Job",
+          selectJobPrompt: "Select a job to view details",
+          approve: "Approve",
+          reject: "Reject",
+          rerun: "Rerun",
+          latestQaReport: "Latest QA Report",
+          noQaLoaded: "No report loaded",
+          noQaReportPrefix: "No QA report:",
+          selectJobFirst: "Select a job first",
+          loadErrorPrefix: "Load failed:",
+          statuses: {
+            queued: "queued",
+            planning: "planning",
+            editing: "editing",
+            qa: "qa",
+            human_review: "human_review",
+            succeeded: "succeeded",
+            failed: "failed",
+            blocked: "blocked",
+          },
+        },
+        zh: {
+          pageTitle: "视频平台运营后台",
+          dashboardTitle: "运营看板",
+          dashboardSubtitle: "任务列表、质检报告与人工审核决策",
+          refresh: "刷新",
+          viewOps: "运营视图",
+          viewWorkflow: "工作流视图",
+          workflowTitle: "工作流控制台",
+          workflowHint: "内嵌 Temporal 工作流页面",
+          jobs: "任务",
+          selectedJob: "当前任务",
+          selectJobPrompt: "请选择一个任务查看详情",
+          approve: "通过",
+          reject: "驳回",
+          rerun: "重跑",
+          latestQaReport: "最新质检报告",
+          noQaLoaded: "暂无报告",
+          noQaReportPrefix: "暂无质检报告：",
+          selectJobFirst: "请先选择一个任务",
+          loadErrorPrefix: "加载失败：",
+          statuses: {
+            queued: "排队中",
+            planning: "规划中",
+            editing: "编辑中",
+            qa: "质检中",
+            human_review: "人工复核",
+            succeeded: "已完成",
+            failed: "失败",
+            blocked: "已拦截",
+          },
+        },
+      };
+
+      function detectLocale() {
+        const saved = localStorage.getItem("ops_locale");
+        if (saved === "en" || saved === "zh") {
+          return saved;
+        }
+        return (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+      }
+
+      let currentLocale = detectLocale();
+      let selectedJobId = null;
+      let currentView = "ops";
+
+      function t(key) {
+        return I18N[currentLocale][key] || I18N.en[key] || key;
+      }
+
+      function statusLabel(status) {
+        return I18N[currentLocale].statuses[status] || status;
+      }
+
+      function applyLocale() {
+        document.documentElement.lang = currentLocale === "zh" ? "zh-CN" : "en";
+        document.title = t("pageTitle");
+        document.querySelectorAll("[data-i18n]").forEach((el) => {
+          el.textContent = t(el.getAttribute("data-i18n"));
+        });
+        document.getElementById("langBtn").textContent = currentLocale === "zh" ? "English" : "中文";
+      }
+
+      function setView(view) {
+        currentView = view;
+        const opsPanel = document.getElementById("opsPanel");
+        const workflowPanel = document.getElementById("workflowPanel");
+        const viewOpsBtn = document.getElementById("viewOpsBtn");
+        const viewWorkflowBtn = document.getElementById("viewWorkflowBtn");
+        if (view === "workflow") {
+          opsPanel.classList.add("hidden");
+          workflowPanel.classList.remove("hidden");
+          viewOpsBtn.classList.remove("active");
+          viewWorkflowBtn.classList.add("active");
+          const frame = document.getElementById("workflowFrame");
+          if (!frame.src) {
+            frame.src = workflowUrl;
+          }
+        } else {
+          opsPanel.classList.remove("hidden");
+          workflowPanel.classList.add("hidden");
+          viewOpsBtn.classList.add("active");
+          viewWorkflowBtn.classList.remove("active");
+        }
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(`${cfg.apiBase}${path}`, {
+          ...options,
+          headers: { ...headers, ...(options.headers || {}) },
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`${res.status}: ${txt}`);
+        }
+        return res.json();
+      }
+
+      async function loadJobs() {
+        const data = await api("/api/v1/jobs?limit=100");
+        const jobsEl = document.getElementById("jobs");
+        jobsEl.innerHTML = "";
+        for (const job of data.items) {
+          const el = document.createElement("div");
+          el.className = "job-row";
+          el.innerHTML = `<div><b>${job.job_id}</b></div><div class='muted'>${job.instruction}</div><span class='status'>${statusLabel(job.status)}</span>`;
+          el.onclick = () => selectJob(job.job_id);
+          jobsEl.appendChild(el);
+        }
+      }
+
+      async function selectJob(jobId) {
+        selectedJobId = jobId;
+        const job = await api(`/api/v1/jobs/${jobId}`);
+        document.getElementById("detail").innerHTML = `<pre>${JSON.stringify(job, null, 2)}</pre>`;
+        try {
+          const qa = await api(`/api/v1/jobs/${jobId}/qa-report`);
+          document.getElementById("qa").textContent = JSON.stringify(qa, null, 2);
+        } catch (err) {
+          document.getElementById("qa").textContent = `${t("noQaReportPrefix")} ${err.message}`;
+        }
+      }
+
+      async function decision(value) {
+        if (!selectedJobId) {
+          alert(t("selectJobFirst"));
+          return;
+        }
+        await api(`/api/v1/reviews/${selectedJobId}/decision`, {
+          method: "POST",
+          body: JSON.stringify({ decision: value, reviewer: "ops-web", reason: "manual ops action" }),
+        });
+        await selectJob(selectedJobId);
+        await loadJobs();
+      }
+
+      document.getElementById("langBtn").addEventListener("click", async () => {
+        currentLocale = currentLocale === "en" ? "zh" : "en";
+        localStorage.setItem("ops_locale", currentLocale);
+        applyLocale();
+        if (currentView === "ops") {
+          await loadJobs();
+          if (selectedJobId) {
+            await selectJob(selectedJobId);
+          }
+        }
+      });
+
+      document.getElementById("refreshBtn").addEventListener("click", async () => {
+        if (currentView === "workflow") {
+          const frame = document.getElementById("workflowFrame");
+          if (frame.src) {
+            frame.src = frame.src;
+          } else {
+            frame.src = workflowUrl;
+          }
+          return;
+        }
+        await loadJobs();
+        if (selectedJobId) {
+          await selectJob(selectedJobId);
+        }
+      });
+
+      document.getElementById("viewOpsBtn").addEventListener("click", () => setView("ops"));
+      document.getElementById("viewWorkflowBtn").addEventListener("click", () => setView("workflow"));
+
+      applyLocale();
+      setView("ops");
+      loadJobs().catch((err) => {
+        document.getElementById("jobs").innerHTML = `<pre>${t("loadErrorPrefix")} ${err.message}</pre>`;
+      });
+    </script>
+  </body>
+</html>

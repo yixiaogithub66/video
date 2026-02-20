@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video-platform"
+version = "0.1.0"
+description = "Local production-grade video editing orchestration platform"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+  "pydantic>=2.11.0",
+  "sqlalchemy>=2.0.39",
+  "psycopg[binary]>=3.2.6",
+  "temporalio>=1.10.0",
+  "redis>=5.2.1",
+  "qdrant-client>=1.13.2",
+  "boto3>=1.37.0",
+  "httpx>=0.28.1",
+  "psutil>=7.0.0",
+  "python-multipart>=0.0.20"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.5",
+  "pytest-cov>=6.0.0",
+  "jsonschema>=4.23.0"
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["video_platform*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"
+testpaths = ["tests"]
+python_files = ["test_*.py", "validate_*.py"]
